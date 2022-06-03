@@ -5,6 +5,11 @@ import "./App.css";
 import ConnectWalletButton from "./components/ConnectWalletButton";
 import axios from "axios";
 
+const instance = axios.create({
+  withCredentials: true,
+  baseURL: "http://localhost:5000/"
+})
+
 const App = () => {
   const [loading, setLoading] = useState(false);
   const [address, setAddress] = useState("");
@@ -30,11 +35,14 @@ const App = () => {
     setLoading(false);
   };
 
-  const onPressLogout = () => setAddress("");
+  const onPressLogout = async () => {
+    await instance.post(`logout`,{});
+    setAddress("");
+  }
   
   const handleLogin = async (address) => {
-    const baseUrl = "http://localhost:5000";
-    const response = await axios.get(`${baseUrl}/login/request?walletAddress=${address}`);
+    const response = await instance.post(`login/request`, {walletAddress: address});
+
     const messageToSign = response?.data?.messageToSign;
 
     if (!messageToSign) {
@@ -44,15 +52,9 @@ const App = () => {
     const web3 = new Web3(Web3.givenProvider);
     const signature = await web3.eth.personal.sign(messageToSign, address);
 
-    const jwtResponse = await axios.get(
-      `${baseUrl}/login/verify?walletAddress=${address}&signature=${signature}`
-    );
+    await instance.post(
+      `login/verify`, {walletAddress: address, signature: signature});
 
-    const customToken = jwtResponse?.data?.customToken;
-
-    if (!customToken) {
-      throw new Error("Invalid JWT");
-    }
 
     setAddress(address);
   };
